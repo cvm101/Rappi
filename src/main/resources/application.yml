@@ -1,0 +1,28 @@
+spring:
+  config:
+    import: optional:file:./.env[.properties]
+  datasource:
+    # No SUPABASE_DB_URL -> in-memory H2 (Postgres mode). With it -> Supabase Postgres.
+    url: ${SUPABASE_DB_URL:jdbc:h2:mem:purchasing;MODE=PostgreSQL;DB_CLOSE_DELAY=-1}
+    username: ${SUPABASE_DB_USER:sa}
+    password: ${SUPABASE_DB_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: none        # schema is owned by schema.sql
+    open-in-view: false
+  sql:
+    init:
+      mode: always          # schema.sql + data.sql are re-applied on startup (demo reset)
+
+llm:
+  provider: ${LLM_PROVIDER:mock}
+  base-url: ${LLM_BASE_URL:https://api.openai.com/v1}
+  api-key: ${LLM_API_KEY:}
+  model: ${LLM_MODEL:gpt-4o-mini}
+  mock-naive-first: ${LLM_MOCK_NAIVE_FIRST:false}
+
+policy:
+  review-days: 7          # how many days of demand one order should cover beyond lead time
+  safety-days: 2          # safety stock in days of demand
+  max-cover-days: 21      # above this much cover the order is considered overstock
+  approval-value: 50000   # POs above this value need human approval
