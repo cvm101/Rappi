@@ -12,7 +12,8 @@ spring:
     open-in-view: false
   sql:
     init:
-      mode: always          # schema.sql + data.sql are re-applied on startup (demo reset)
+      mode: always          # schema.sql (DDL, incl. audit table IF NOT EXISTS) + data.sql (seed) on startup.
+                            # Runtime resets are DML-only (reset.sql) — safe on persistent Postgres.
 
 llm:
   provider: ${LLM_PROVIDER:mock}

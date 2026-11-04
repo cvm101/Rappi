@@ -8,64 +8,136 @@
   header { background: #1f2a44; color: #fff; padding: 14px 24px; }
   header h1 { margin: 0; font-size: 20px; }
   header p { margin: 4px 0 0; font-size: 13px; opacity: .8; }
-  main { max-width: 1000px; margin: 20px auto; padding: 0 16px; }
-  .card { background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
-  h2 { margin: 0 0 10px; font-size: 16px; }
+  main { max-width: 1050px; margin: 20px auto; padding: 0 16px; }
+  .card { background: #fff; border-radius: 8px; padding: 18px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  h2 { margin: 0 0 4px; font-size: 17px; }
+  h3 { margin: 16px 0 6px; font-size: 14px; color: #333; }
+  .sub { color: #666; font-size: 13px; margin: 0 0 12px; }
   select, button { font-size: 14px; padding: 7px 12px; border-radius: 5px; border: 1px solid #bbb; }
   button { background: #2f6fed; color: #fff; border: none; cursor: pointer; }
   button.secondary { background: #6b7280; }
   button.ok { background: #1a9d55; } button.no { background: #d64545; }
   button:disabled { opacity: .5; }
-  .desc { color: #555; font-size: 13px; margin: 8px 0 12px; }
-  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; color: #fff; font-weight: 600; font-size: 13px; }
+  .desc { color: #555; font-size: 13px; margin: 10px 0 4px; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; color: #fff; font-weight: 600; font-size: 12px; }
   .ACCEPT, .AUTO_EXECUTED { background: #1a9d55; } .MODIFY, .PENDING_APPROVAL { background: #e08a00; }
   .REJECT, .NO_ACTION { background: #6b7280; } .INVESTIGATE, .ESCALATED { background: #d64545; }
   table { border-collapse: collapse; width: 100%; font-size: 13px; }
-  td, th { border-bottom: 1px solid #eee; padding: 5px 8px; text-align: left; vertical-align: top; }
+  td, th { border-bottom: 1px solid #eee; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { color: #444; }
   .pass { color: #1a9d55; font-weight: 700; } .fail { color: #d64545; font-weight: 700; }
-  .step { font-size: 12px; border-left: 3px solid #ccc; padding: 3px 8px; margin: 4px 0; word-break: break-all; }
+  .step { font-size: 12.5px; border-left: 3px solid #ccc; padding: 5px 10px; margin: 5px 0; word-break: break-word; background: #fafafa; }
   .step.TOOL { border-color: #2f6fed; } .step.VALIDATION { border-color: #e08a00; } .step.ACTION { border-color: #1a9d55; }
   .step.DECISION { border-color: #7c3aed; } .step.ERROR { border-color: #d64545; } .step.EVENT { border-color: #0891b2; }
-  code { background: #f0f1f3; padding: 1px 4px; border-radius: 3px; }
+  code { background: #f0f1f3; padding: 1px 4px; border-radius: 3px; font-size: 12px; }
   .muted { color: #777; font-size: 12px; }
+  .summary { background: #eef4ff; border: 1px solid #c9dcff; border-radius: 6px; padding: 10px 14px; font-size: 14px; margin-bottom: 12px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 4px; }
+  .howto { font-size: 13.5px; color: #333; line-height: 1.55; }
+  .howto ol { margin: 8px 0; padding-left: 22px; }
+  .howto li { margin: 5px 0; }
+  .why { color: #888; font-size: 11.5px; }
+  details > summary { cursor: pointer; font-size: 14px; padding: 6px 0; }
+  .divider { border-top: 2px dashed #ddd; margin: 10px 0; }
 </style>
 </head>
 <body>
 <header>
   <h1>AI Purchasing Agent</h1>
-  <p>Investigates a purchasing situation with tools, decides, acts, then validates its own result.</p>
+  <p>Investigates a purchasing situation with tools, decides, acts, then validates its own result — exactly like a human buyer would.</p>
 </header>
 <main>
+
+  <div class="card">
+    <details open>
+      <summary><b>What is this? How does the agent work?</b></summary>
+      <div class="howto">
+        <p>This demo replaces a <b>buyer</b> at a quick-commerce company. The buying system suggests an order (e.g. "buy 800 units"),
+        but the suggestion is not always right. The agent's job is to check it against real data and take action — safely.</p>
+        <ol>
+          <li><b>Investigate</b> — the agent (an LLM) calls read-only tools: inventory, open purchase orders, supplier terms, budget, storage. All the math is done by trusted Java code (<code>calculate_requirement</code>), never by the LLM.</li>
+          <li><b>Decide</b> — it returns one of: <b>ACCEPT</b> (recommendation is right), <b>MODIFY</b> (change quantity/source), <b>REJECT</b> (don't buy), <b>INVESTIGATE/ESCALATE</b> (needs a human).</li>
+          <li><b>Act</b> — your Java code (not the LLM) creates draft purchase orders.</li>
+          <li><b>Validate</b> — an independent validator re-checks the drafted order: supplier minimum, supplier stock, budget, storage, stockout & overstock risk.</li>
+          <li><b>Self-correct or escalate</b> — if a check fails, the violations are fed back to the agent (up to 3 attempts), then it is escalated to a human.</li>
+          <li><b>Human approval</b> — risky plans (partial coverage, or value over 50,000) are held for a human. Approving <b>re-runs all checks</b> in case the world changed.</li>
+        </ol>
+        <p class="muted">Tip: run a scenario, read the trace at the bottom, then click Reset demo data before the next run — earlier runs change the data on purpose (the agent reacts to the current world state).</p>
+      </div>
+    </details>
+  </div>
+
   <div class="card">
     <h2>1. Pick a purchasing situation</h2>
+    <p class="sub">Each option is a real scenario the agent was built to handle (assignment scenarios 1, 2 and 4).</p>
     <select id="scenario"></select>
     <button id="run">Run agent</button>
     <button id="reset" class="secondary">Reset demo data</button>
     <button id="eval" class="secondary">Run evaluation (all scenarios)</button>
     <div class="desc" id="desc"></div>
+    <div class="desc muted" id="expect"></div>
   </div>
 
   <div class="card" id="resultCard" style="display:none">
     <h2>2. Agent result</h2>
+    <p class="sub">What the agent decided and why — in plain language.</p>
     <div id="result"></div>
   </div>
 
   <div class="card" id="evalCard" style="display:none">
-    <h2>Evaluation</h2>
+    <h2>Evaluation — did the agent do the right thing?</h2>
+    <p class="sub">Every scenario is scored against hand-computed expected outcomes on five criteria:</p>
+    <div class="legend">
+      <span class="badge ACCEPT" title="Was the final decision (accept/modify/reject/escalate) correct?">✔ Decision correct</span>
+      <span class="badge" style="background:#2f6fed" title="Did the agent call the tools it needed before deciding?">🔍 Investigated</span>
+      <span class="badge MODIFY" title="Did the order respect supplier minimum, stock, budget and storage?">📏 Constraints respected</span>
+      <span class="badge" style="background:#7c3aed" title="Was the right action taken (order placed / nothing placed / escalated)?">⚡ Action correct</span>
+      <span class="badge" style="background:#0891b2" title="Did the validator confirm the outcome, including for rejected orders?">🛡 Result validated</span>
+    </div>
     <div id="evalResult"></div>
   </div>
 
   <div class="card">
     <h2>3. Waiting for human approval</h2>
+    <p class="sub">Orders the agent would not act on alone (partial coverage, or value above the 50,000 auto-approval limit). Approving re-validates everything — if the world changed, approval is blocked.</p>
     <div id="pending"></div>
+  </div>
+
+  <div class="card">
+    <h2>4. Recent agent decisions (audit log)</h2>
+    <p class="sub">Every run is recorded: what was decided, why, and how many attempts it took.</p>
+    <div id="audit"></div>
   </div>
 </main>
 
 <script>
-let presets = [];
+let presets = [], ref = { products: {}, suppliers: {} };
 const $ = id => document.getElementById(id);
-const esc = s => String(s ?? '').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-const badge = v => `<span class="badge ${v}">${v}</span>`;
+const esc = s => String(s ?? '').replace(/[&<>]/g, c => ({'&':'&'+'amp;','<':'&'+'lt;','>':'&'+'gt;'}[c]));
+const badge = v => `<span class="badge ${v}">${esc(label(v))}</span>`;
+
+/* ---------- plain-language labels ---------- */
+const LABELS = {
+  ACCEPT: 'Accept recommendation', MODIFY: 'Modify the order', REJECT: 'Reject recommendation', INVESTIGATE: 'Escalate to human',
+  AUTO_EXECUTED: 'Order placed automatically', PENDING_APPROVAL: 'Waiting for human approval', NO_ACTION: 'No order placed', ESCALATED: 'Escalated to a human',
+  QUANTITY_POSITIVE: 'Order quantity', MOQ: "Supplier minimum order", SUPPLIER_AVAILABILITY: 'Supplier stock available',
+  BUDGET: 'Budget available', STORAGE: 'Storage space', STOCKOUT: 'Stockout risk', OVERSTOCK: 'Overstock risk',
+  decision_correct: 'Was the decision correct?', information_gathered: 'Did the agent investigate first (right tools called)?',
+  constraints_respected: 'Did the order respect constraints?', action_correct: 'Was the right action taken?', result_validated: 'Was the result validated?'
+};
+const WHY = {
+  MOQ: "suppliers refuse orders below their minimum",
+  SUPPLIER_AVAILABILITY: "the supplier must physically have this much stock",
+  BUDGET: "the node must have enough purchasing budget",
+  STORAGE: "the warehouse must fit the incoming volume",
+  STOCKOUT: "buying too little means empty shelves during the supplier lead time",
+  OVERSTOCK: "buying too much wastes cash and space (cap = 21 days of demand)",
+  QUANTITY_POSITIVE: "an order must be for at least one unit"
+};
+const TRACE_LABEL = { TOOL: '🔍 Investigate — called tool', DECISION: '🧠 Decide', ACTION: '⚡ Act — ', VALIDATION: '🛡 Validate — ', ERROR: '❌ Error', EVENT: '📢 Situation' };
+const label = v => LABELS[v] || v;
+const prod = id => (ref.products[String(id)] || {}).name || ('Product ' + id);
+const sup = id => (ref.suppliers[String(id)] || {}).name || ('Supplier ' + id);
 
 async function api(path, method = 'GET', body) {
   const r = await fetch('/api' + path, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
@@ -74,55 +146,139 @@ async function api(path, method = 'GET', body) {
 }
 
 async function init() {
+  ref = (await api('/reference')).data;
   presets = (await api('/scenarios')).data;
   $('scenario').innerHTML = presets.map(p => `<option value="${p.id}">${esc(p.title)}</option>`).join('');
   $('scenario').onchange = showDesc; showDesc();
-  loadPending();
+  loadPending(); loadAudit();
 }
-function showDesc() { $('desc').textContent = presets.find(p => p.id === $('scenario').value).description; }
+function showDesc() {
+  const p = presets.find(x => x.id === $('scenario').value);
+  $('desc').textContent = p.description;
+  $('expect').textContent = 'What a good buyer should do here: ' + expectText(p.expected);
+}
+/* Turn the structured ground truth into one readable sentence. */
+function expectText(e) {
+  if (!e) return 'investigate first, respect all constraints, and only act when it is safe.';
+  const parts = [];
+  parts.push('decision should be ' + (e.decisions || []).join(' or '));
+  if (e.finalStatus) parts.push('outcome "' + label(e.finalStatus) + '"');
+  if (e.maxQty > 0) parts.push('order quantity between ' + e.minQty + ' and ' + e.maxQty);
+  if (e.maxQty === 0) parts.push('order nothing');
+  if (e.forbiddenSupplierId) parts.push('must NOT use ' + sup(e.forbiddenSupplierId));
+  return parts.join('; ') + '.';
+}
 
 $('run').onclick = async () => {
-  $('run').disabled = true; $('resultCard').style.display = 'block'; $('result').textContent = 'Agent is working...';
+  $('run').disabled = true; $('resultCard').style.display = 'block';
+  $('result').innerHTML = '<p>⏳ Agent is working: <i>investigating with tools → deciding → acting → validating its own result…</i></p>';
   const preset = presets.find(p => p.id === $('scenario').value);
   const { data } = await api('/agent/run', 'POST', preset.request);
-  renderResult(data); loadPending(); $('run').disabled = false;
+  renderResult(data, preset); loadPending(); loadAudit(); $('run').disabled = false;
+  $('resultCard').scrollIntoView({ behavior: 'smooth' });
 };
-$('reset').onclick = async () => { await api('/admin/reset', 'POST'); $('resultCard').style.display = 'none'; loadPending(); };
+$('reset').onclick = async () => {
+  await api('/admin/reset', 'POST');
+  $('resultCard').style.display = 'none'; $('evalCard').style.display = 'none';
+  loadPending(); loadAudit();
+};
 $('eval').onclick = async () => {
-  $('eval').disabled = true; $('evalCard').style.display = 'block'; $('evalResult').textContent = 'Running all scenarios...';
+  $('eval').disabled = true; $('evalCard').style.display = 'block';
+  $('evalResult').innerHTML = '<p>⏳ Running every scenario and scoring the decisions…</p>';
   const { data } = await api('/eval/run', 'POST');
-  $('evalResult').innerHTML = `<p><b>${data.passedCases}/${data.totalCases}</b> scenarios passed all criteria</p>` +
-    data.cases.map(c => `<details><summary>${c.passed ? '<span class="pass">PASS</span>' : '<span class="fail">FAIL</span>'}
-      ${esc(c.title)} - ${badge(c.decision)} ${badge(c.finalStatus)} qty=${c.totalQty}, attempts=${c.attempts}</summary>
-      <table>${c.criteria.map(k => `<tr><td class="${k.passed ? 'pass' : 'fail'}">${k.passed ? 'PASS' : 'FAIL'}</td><td>${k.name}</td><td>${esc(k.detail)}</td></tr>`).join('')}</table></details>`).join('');
-  $('eval').disabled = false; loadPending();
+  renderEval(data); $('eval').disabled = false; loadPending(); loadAudit();
 };
 
-function renderResult(r) {
+function renderResult(r, preset) {
   const checks = r.validation ? r.validation.checks : [];
+  const prodName = prod(preset && preset.request ? preset.request.productId : '');
+  const orderTxt = r.orders.length
+    ? r.orders.map(o => `<b>${o.quantity} units</b> of ${esc(prodName)} from <b>${esc(sup(o.supplierId))}</b>`).join(' + ')
+    : '';
+  let headline = '';
+  if (r.decision === 'ACCEPT')  headline = `The agent <b class="pass">agreed</b> with the system's recommendation and ${orderTxt}.`;
+  if (r.decision === 'MODIFY')  headline = r.orders.length
+      ? `The agent <b style="color:#e08a00">modified</b> the plan: instead of the original recommendation it orders ${orderTxt}.`
+      : `The agent <b style="color:#e08a00">modified</b> the plan (see trace for details).`;
+  if (r.decision === 'REJECT')  headline = `The agent <b>rejected</b> the recommendation — buying would overstock the store, so nothing was ordered.`;
+  if (r.decision === 'INVESTIGATE') headline = `The agent could not find a <b>safe automatic action</b>, so it escalated the situation to a human buyer.`;
+
+  const outcome = {
+    AUTO_EXECUTED: '✅ All safety checks passed, so the purchase order was <b>placed automatically</b>.',
+    PENDING_APPROVAL: '⏸ The order was drafted but is <b>not placed yet</b> — it needs a human to approve it (section 3 below).',
+    NO_ACTION: '🚫 No order was placed, and the validator confirmed that causes no stockout.',
+    ESCALATED: '🔔 A human buyer must decide — the situation is outside what the agent may do on its own.'
+  }[r.finalStatus];
+
   $('result').innerHTML = `
-    <p>Decision: ${badge(r.decision)} &nbsp; Final status: ${badge(r.finalStatus)} &nbsp; <span class="muted">attempts: ${r.attempts}</span></p>
-    <p><b>Reasoning:</b> ${esc(r.reasoning)}</p>
-    ${r.orders.length ? `<p><b>Orders:</b> ${r.orders.map(o => `${o.quantity} units from supplier ${o.supplierId}`).join(', ')} (PO ${r.poIds.join(', ')})</p>` : ''}
-    ${r.approvalReasons.length ? `<p><b>Why a human is needed:</b></p><ul>${r.approvalReasons.map(a => `<li>${esc(a)}</li>`).join('')}</ul>` : ''}
-    <h3>Final validation</h3>
-    <table>${checks.map(c => `<tr><td class="${c.passed ? 'pass' : 'fail'}">${c.passed ? 'PASS' : 'FAIL'}</td><td>${c.name}</td><td>${esc(c.detail)}</td></tr>`).join('') || '<tr><td>no order to validate</td></tr>'}</table>
-    <h3>Agent trace</h3>
-    ${r.trace.map(t => `<div class="step ${t.type}"><b>#${t.attempt} ${t.type} ${esc(t.name)}</b> <span class="muted">${esc(t.input)}</span><br>${esc(t.output)}</div>`).join('')}`;
+    <div class="summary"><b>In plain English:</b> ${headline} ${outcome}</div>
+    <p>${badge(r.decision)} &nbsp;→&nbsp; ${badge(r.finalStatus)} &nbsp; <span class="muted">attempts: ${r.attempts} ${r.attempts > 1 ? '(its first plan failed validation and it self-corrected)' : ''}</span></p>
+    <p><b>Agent's own reasoning:</b> <i>${esc(r.reasoning)}</i></p>
+    ${r.orders.length ? `<p><b>Order drafted:</b> ${r.orders.map(o => `${o.quantity} units from ${sup(o.supplierId)} (PO #${r.poIds.join(', #')})`).join(', ')}</p>` : ''}
+    ${r.approvalReasons.length ? `<p><b>Why a human must approve:</b></p><ul>${r.approvalReasons.map(a => `<li>${esc(a)}</li>`).join('')}</ul>` : ''}
+    <h3>Final validation — the 7 safety checks every order must pass</h3>
+    <p class="muted">The validator is independent plain Java code. It re-reads the database and checks the drafted order as a whole.</p>
+    <table>${checks.map(c => `<tr><td class="${c.passed ? 'pass' : 'fail'}" style="width:60px">${c.passed ? 'PASS' : 'FAIL'}</td>
+      <td style="width:190px"><b>${esc(label(c.name))}</b><br><span class="why">because ${esc(WHY[c.name] || 'it protects the business')}</span></td>
+      <td>${esc(c.detail)}</td></tr>`).join('') || '<tr><td><span class="muted">No order was drafted, so there is nothing to validate. (A REJECT decision is validated too: rejecting must not cause a stockout.)</span></td></tr>'}</table>
+    <h3>Agent trace — every step it took, in order</h3>
+    ${traceHtml(r.trace)}`;
+}
+
+function traceHtml(trace) {
+  let out = '', lastAttempt = 0;
+  (trace || []).forEach(t => {
+    if (t.attempt !== lastAttempt) {
+      if (lastAttempt) out += `<div class="divider"></div><div class="muted"><b>Attempt ${t.attempt}:</b> the previous plan failed validation, the violations were fed back and the agent tried again.</div>`;
+      else out = `<div class="muted"><b>Attempt 1:</b></div>`;
+      lastAttempt = t.attempt;
+    }
+    const lbl = TRACE_LABEL[t.type] || t.type;
+    out += `<div class="step ${t.type}"><b>${esc(lbl)} ${esc(t.name || '')}</b> ${t.input ? `<span class="muted">${esc(t.input)}</span><br>` : ''}${esc(t.output)}</div>`;
+  });
+  return out || '<span class="muted">no trace</span>';
+}
+
+function renderEval(data) {
+  $('evalResult').innerHTML = `<p style="font-size:16px"><b>${data.passedCases}/${data.totalCases}</b> scenarios passed <b>all five criteria</b>.</p>` +
+    data.cases.map(c => `<details><summary>${c.passed ? '<span class="pass">PASS</span>' : '<span class="fail">FAIL</span>'}
+      <b>${esc(c.title)}</b> — ${badge(c.decision)} ${badge(c.finalStatus)} <span class="muted">ordered qty=${c.totalQty}, attempts=${c.attempts}</span></summary>
+      <table>${c.criteria.map(k => `<tr><td class="${k.passed ? 'pass' : 'fail'}" style="width:50px">${k.passed ? 'PASS' : 'FAIL'}</td>
+        <td style="width:320px">${esc(label(k.name))}</td><td>${esc(k.detail)}</td></tr>`).join('')}</table></details>`).join('');
 }
 
 async function loadPending() {
   const { data } = await api('/purchase-orders?status=PENDING_APPROVAL');
-  $('pending').innerHTML = data.length ? `<table><tr><th>PO</th><th>Product</th><th>Node</th><th>Supplier</th><th>Qty</th><th>Value</th><th></th></tr>` +
-    data.map(p => `<tr><td>${p.id}</td><td>${p.productId}</td><td>${p.nodeId}</td><td>${p.supplierId}</td><td>${p.quantity}</td><td>${p.value}</td>
-      <td><button class="ok" onclick="decide(${p.id},'approve')">Approve</button> <button class="no" onclick="decide(${p.id},'reject')">Reject</button></td></tr>`).join('') + '</table>'
+  $('pending').innerHTML = data.length
+    ? `<p class="muted">These POs exist only as drafts. Nothing has been bought yet.</p>
+       <table><tr><th>PO</th><th>Product</th><th>Node</th><th>Supplier</th><th>Qty</th><th>Value</th><th></th></tr>` +
+      data.map(p => `<tr><td>${p.id}</td><td>${esc(prod(p.productId))}</td><td>${esc(p.nodeId)}</td><td>${esc(sup(p.supplierId))}</td><td>${p.quantity}</td><td>${p.value}</td>
+        <td><button class="ok" onclick="decide(${p.id},'approve')">Approve</button> <button class="no" onclick="decide(${p.id},'reject')">Reject</button></td></tr>`).join('') + '</table>'
     : '<span class="muted">Nothing pending.</span>';
 }
 
 async function decide(id, action) {
   const { status, data } = await api(`/purchase-orders/${id}/${action}`, 'POST');
-  if (status === 409) alert('Approval blocked - validation failed at approval time:\n' + data.validation.checks.filter(c => !c.passed).map(c => c.name + ': ' + c.detail).join('\n'));
-  loadPending();
+  if (status >= 400) {
+    const failed = (data && data.validation && data.validation.checks || []).filter(c => !c.passed);
+    const msg = failed.length
+      ? failed.map(c => label(c.name) + ': ' + c.detail).join('\n')
+      : ((data && data.error) || ('HTTP ' + status));
+    alert((failed.length
+      ? 'Approval blocked — validation failed at approval time (the world may have changed since the agent drafted this):\n\n'
+      : 'Could not process:\n\n') + msg);
+  }
+  loadPending(); loadAudit();
+}
+
+async function loadAudit() {
+  const { data } = await api('/agent/decisions');
+  $('audit').innerHTML = data.length
+    ? `<table><tr><th>When</th><th>Scenario</th><th>Product</th><th>Decision</th><th>Outcome</th><th>Attempts</th><th>Reasoning (short)</th></tr>` +
+      data.map(d => `<tr><td class="muted">${esc(String(d.createdAt).replace('T', ' ').slice(0, 16))}</td><td>${esc(d.scenario)}</td><td>${esc(prod(d.productId))}</td>
+        <td>${badge(d.decision)}</td><td>${badge(d.finalStatus)}</td><td>${d.attempts}</td>
+        <td class="muted" style="max-width:340px">${esc((d.reasoning || '').slice(0, 160))}${(d.reasoning || '').length > 160 ? '…' : ''}</td></tr>`).join('') + '</table>'
+    : '<span class="muted">No decisions yet — run a scenario above.</span>';
 }
 init();
 </script>
