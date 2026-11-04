@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AI Purchasing Agent</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; background: #f4f5f7; color: #222; }
+  header { background: #1f2a44; color: #fff; padding: 14px 24px; }
+  header h1 { margin: 0; font-size: 20px; }
+  header p { margin: 4px 0 0; font-size: 13px; opacity: .8; }
+  main { max-width: 1000px; margin: 20px auto; padding: 0 16px; }
+  .card { background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  h2 { margin: 0 0 10px; font-size: 16px; }
+  select, button { font-size: 14px; padding: 7px 12px; border-radius: 5px; border: 1px solid #bbb; }
+  button { background: #2f6fed; color: #fff; border: none; cursor: pointer; }
+  button.secondary { background: #6b7280; }
+  button.ok { background: #1a9d55; } button.no { background: #d64545; }
+  button:disabled { opacity: .5; }
+  .desc { color: #555; font-size: 13px; margin: 8px 0 12px; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; color: #fff; font-weight: 600; font-size: 13px; }
+  .ACCEPT, .AUTO_EXECUTED { background: #1a9d55; } .MODIFY, .PENDING_APPROVAL { background: #e08a00; }
+  .REJECT, .NO_ACTION { background: #6b7280; } .INVESTIGATE, .ESCALATED { background: #d64545; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  td, th { border-bottom: 1px solid #eee; padding: 5px 8px; text-align: left; vertical-align: top; }
+  .pass { color: #1a9d55; font-weight: 700; } .fail { color: #d64545; font-weight: 700; }
+  .step { font-size: 12px; border-left: 3px solid #ccc; padding: 3px 8px; margin: 4px 0; word-break: break-all; }
+  .step.TOOL { border-color: #2f6fed; } .step.VALIDATION { border-color: #e08a00; } .step.ACTION { border-color: #1a9d55; }
+  .step.DECISION { border-color: #7c3aed; } .step.ERROR { border-color: #d64545; } .step.EVENT { border-color: #0891b2; }
+  code { background: #f0f1f3; padding: 1px 4px; border-radius: 3px; }
+  .muted { color: #777; font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>AI Purchasing Agent</h1>
+  <p>Investigates a purchasing situation with tools, decides, acts, then validates its own result.</p>
+</header>
+<main>
+  <div class="card">
+    <h2>1. Pick a purchasing situation</h2>
+    <select id="scenario"></select>
+    <button id="run">Run agent</button>
+    <button id="reset" class="secondary">Reset demo data</button>
+    <button id="eval" class="secondary">Run evaluation (all scenarios)</button>
+    <div class="desc" id="desc"></div>
+  </div>
+
+  <div class="card" id="resultCard" style="display:none">
+    <h2>2. Agent result</h2>
+    <div id="result"></div>
+  </div>
+
+  <div class="card" id="evalCard" style="display:none">
+    <h2>Evaluation</h2>
+    <div id="evalResult"></div>
+  </div>
+
+  <div class="card">
+    <h2>3. Waiting for human approval</h2>
+    <div id="pending"></div>
+  </div>
+</main>
+
+<script>
+let presets = [];
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const badge = v => `<span class="badge ${v}">${v}</span>`;
+
+async function api(path, method = 'GET', body) {
+  const r = await fetch('/api' + path, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  const text = await r.text();
+  return { status: r.status, data: text ? JSON.parse(text) : null };
+}
+
+async function init() {
+  presets = (await api('/scenarios')).data;
+  $('scenario').innerHTML = presets.map(p => `<option value="${p.id}">${esc(p.title)}</option>`).join('');
+  $('scenario').onchange = showDesc; showDesc();
+  loadPending();
+}
+function showDesc() { $('desc').textContent = presets.find(p => p.id === $('scenario').value).description; }
+
+$('run').onclick = async () => {
+  $('run').disabled = true; $('resultCard').style.display = 'block'; $('result').textContent = 'Agent is working...';
+  const preset = presets.find(p => p.id === $('scenario').value);
+  const { data } = await api('/agent/run', 'POST', preset.request);
+  renderResult(data); loadPending(); $('run').disabled = false;
+};
+$('reset').onclick = async () => { await api('/admin/reset', 'POST'); $('resultCard').style.display = 'none'; loadPending(); };
+$('eval').onclick = async () => {
+  $('eval').disabled = true; $('evalCard').style.display = 'block'; $('evalResult').textContent = 'Running all scenarios...';
+  const { data } = await api('/eval/run', 'POST');
+  $('evalResult').innerHTML = `<p><b>${data.passedCases}/${data.totalCases}</b> scenarios passed all criteria</p>` +
+    data.cases.map(c => `<details><summary>${c.passed ? '<span class="pass">PASS</span>' : '<span class="fail">FAIL</span>'}
+      ${esc(c.title)} - ${badge(c.decision)} ${badge(c.finalStatus)} qty=${c.totalQty}, attempts=${c.attempts}</summary>
+      <table>${c.criteria.map(k => `<tr><td class="${k.passed ? 'pass' : 'fail'}">${k.passed ? 'PASS' : 'FAIL'}</td><td>${k.name}</td><td>${esc(k.detail)}</td></tr>`).join('')}</table></details>`).join('');
+  $('eval').disabled = false; loadPending();
+};
+
+function renderResult(r) {
+  const checks = r.validation ? r.validation.checks : [];
+  $('result').innerHTML = `
+    <p>Decision: ${badge(r.decision)} &nbsp; Final status: ${badge(r.finalStatus)} &nbsp; <span class="muted">attempts: ${r.attempts}</span></p>
+    <p><b>Reasoning:</b> ${esc(r.reasoning)}</p>
+    ${r.orders.length ? `<p><b>Orders:</b> ${r.orders.map(o => `${o.quantity} units from supplier ${o.supplierId}`).join(', ')} (PO ${r.poIds.join(', ')})</p>` : ''}
+    ${r.approvalReasons.length ? `<p><b>Why a human is needed:</b></p><ul>${r.approvalReasons.map(a => `<li>${esc(a)}</li>`).join('')}</ul>` : ''}
+    <h3>Final validation</h3>
+    <table>${checks.map(c => `<tr><td class="${c.passed ? 'pass' : 'fail'}">${c.passed ? 'PASS' : 'FAIL'}</td><td>${c.name}</td><td>${esc(c.detail)}</td></tr>`).join('') || '<tr><td>no order to validate</td></tr>'}</table>
+    <h3>Agent trace</h3>
+    ${r.trace.map(t => `<div class="step ${t.type}"><b>#${t.attempt} ${t.type} ${esc(t.name)}</b> <span class="muted">${esc(t.input)}</span><br>${esc(t.output)}</div>`).join('')}`;
+}
+
+async function loadPending() {
+  const { data } = await api('/purchase-orders?status=PENDING_APPROVAL');
+  $('pending').innerHTML = data.length ? `<table><tr><th>PO</th><th>Product</th><th>Node</th><th>Supplier</th><th>Qty</th><th>Value</th><th></th></tr>` +
+    data.map(p => `<tr><td>${p.id}</td><td>${p.productId}</td><td>${p.nodeId}</td><td>${p.supplierId}</td><td>${p.quantity}</td><td>${p.value}</td>
+      <td><button class="ok" onclick="decide(${p.id},'approve')">Approve</button> <button class="no" onclick="decide(${p.id},'reject')">Reject</button></td></tr>`).join('') + '</table>'
+    : '<span class="muted">Nothing pending.</span>';
+}
+
+async function decide(id, action) {
+  const { status, data } = await api(`/purchase-orders/${id}/${action}`, 'POST');
+  if (status === 409) alert('Approval blocked - validation failed at approval time:\n' + data.validation.checks.filter(c => !c.passed).map(c => c.name + ': ' + c.detail).join('\n'));
+  loadPending();
+}
+init();
+</script>
+</body>
+</html>

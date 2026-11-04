@@ -62,7 +62,8 @@ public class PoValidationService {
 
         // 5. overstock: do not hold more than max-cover-days of demand
         double maxStock = daily * policy.getMaxCoverDays();
-        checks.add(new Check("OVERSTOCK", cover <= maxStock,
+        // (buying nothing can never make existing overstock worse, so it always passes)
+        checks.add(new Check("OVERSTOCK", newQty == 0 || cover <= maxStock,
                 "projected stock " + cover + " vs max " + maxStock + " (" + policy.getMaxCoverDays() + " days of demand)"));
 
         return new ValidationReport(checks.stream().allMatch(Check::passed), checks);
