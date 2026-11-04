@@ -91,6 +91,15 @@ mvn spring-boot:run
 
 Tests: `mvn test` (uses the mock LLM, needs no key).
 
+### Troubleshooting connections
+
+- **Supabase: use the session pooler, not the direct host.** The "Direct connection" string (`db.<project-ref>.supabase.co`) is IPv6-only and will fail to resolve on IPv4-only networks (most home/office Wi-Fi). Copy the **Session pooler** JDBC string instead (`jdbc:postgresql://aws-0-<region>.pooler.supabase.com:5432/postgres`) and use the pooler username `postgres.<project-ref>`. The region in the pooler host must match where your project lives (find it in the Supabase dashboard URL / connection dialog).
+- **Build fails with many `cannot find symbol` errors (getters):** this happens when compiling with a JDK newer than the Lombok version bundled by Spring Boot (e.g. JDK 24 with Lombok 1.18.34). Run the build with JDK 17, which the project targets:
+  ```bash
+  export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+  mvn clean compile
+  ```
+
 ### Using the demo UI
 
 1. Pick a situation, click **Run agent**. You see the decision, reasoning, final validation table and the full tool trace.
