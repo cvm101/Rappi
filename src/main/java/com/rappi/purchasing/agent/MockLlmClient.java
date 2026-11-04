@@ -48,7 +48,6 @@ public class MockLlmClient implements LlmClient {
         }
     }
 
-    // ---------- investigation plan ----------
     private List<Call> plan(JsonNode req, Map<String, JsonNode> res, boolean shortfall, long p) {
         long product = req.path("productId").asLong();
         String node = req.path("nodeId").asText();
@@ -72,7 +71,6 @@ public class MockLlmClient implements LlmClient {
         return plan;
     }
 
-    // ---------- Scenario 1 / 4: review a recommendation ----------
     private ObjectNode decideReview(JsonNode req, Map<String, JsonNode> res, long p, boolean naive) {
         int rec = req.path("recommendedQty").asInt();
         if (naive) return decision("ACCEPT", List.of(line(p, rec)), false, "Accepting the system recommendation as-is.");
@@ -100,7 +98,6 @@ public class MockLlmClient implements LlmClient {
                 facts + limits + " Recommended " + rec + ", buying " + cap + "." + (partial ? " Constraint-limited, shortfall needs approval." : ""));
     }
 
-    // ---------- Scenario 2: supplier cannot fulfil ----------
     private ObjectNode decideShortfall(JsonNode req, Map<String, JsonNode> res, long p, boolean naive) {
         int original = req.path("originalQty").asInt();
         int confirmed = req.path("confirmedQty").asInt();
@@ -134,7 +131,6 @@ public class MockLlmClient implements LlmClient {
                         + best.path("supplierName").asText() + " for " + bestQty + " units.");
     }
 
-    // ---------- helpers ----------
     private JsonNode parseRequest(List<ObjectNode> messages) throws Exception {
         for (ObjectNode m : messages) {
             if ("user".equals(m.path("role").asText())) {

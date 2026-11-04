@@ -44,12 +44,10 @@ public class PoValidationService {
                     t.supplierName() + " can supply " + t.availableQty() + ", ordered " + po.getQuantity()));
         }
 
-        // 2. budget
         double cost = proposed.stream().mapToDouble(PurchaseOrder::getValue).sum();
         double budget = budgetService.remaining(nodeId);
         checks.add(new Check("BUDGET", cost <= budget, "cost " + cost + " vs remaining budget " + budget));
 
-        // 3. storage
         double volume = newQty * storageService.unitVolume(productId);
         double free = storageService.freeVolume(nodeId);
         checks.add(new Check("STORAGE", volume <= free, "needs volume " + volume + " vs free volume " + free));

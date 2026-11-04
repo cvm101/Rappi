@@ -45,7 +45,6 @@ public final class Dtos {
                                  String reasoning, String finalStatus, int attempts, List<String> approvalReasons,
                                  List<Long> poIds, ValidationReport validation, List<TraceStep> trace) {}
 
-    // ---------- evaluation ----------
     /** Hand-computed ground truth for a preset scenario. */
     public record Expectation(Set<DecisionType> decisions, String finalStatus, int minQty, int maxQty,
                               Set<String> requiredTools, Long forbiddenSupplierId) {}

@@ -108,7 +108,6 @@ public class PurchasingTools {
         return validator.validate(productId, a.path("nodeId").asText(), transientPos, a.path("referenceSupplierId").asLong());
     }
 
-    // ---- schema helpers ----
     private ToolSpec spec(String name, String description, String... params) {
         return new ToolSpec(name, description, schema(params));
     }

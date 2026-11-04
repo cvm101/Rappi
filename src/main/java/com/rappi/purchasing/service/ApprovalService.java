@@ -22,7 +22,7 @@ public class ApprovalService {
         PurchaseOrder po = pendingPo(poId);
         ValidationReport report = validator.validate(po.getProductId(), po.getNodeId(), List.of(po), po.getSupplierId());
         if (!report.passed()) {
-            return new ApprovalResult(false, po, report);     // stays PENDING_APPROVAL
+            return new ApprovalResult(false, po, report);
         }
         poService.setStatus(List.of(po), PoStatus.APPROVED);
         budgetService.spend(po.getNodeId(), po.getValue());

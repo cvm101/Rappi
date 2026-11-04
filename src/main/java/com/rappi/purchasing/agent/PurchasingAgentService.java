@@ -97,7 +97,7 @@ public class PurchasingAgentService {
             trace.add(new TraceStep(attempt, "VALIDATION", "validator", "", json(report)));
             if (report.passed()) break;
 
-            poService.setStatus(drafts, PoStatus.CANCELLED);     // undo the action that did not hold up
+            poService.setStatus(drafts, PoStatus.CANCELLED);
             drafts = new ArrayList<>();
             messages.add(message("user", "VALIDATION FAILED for your proposal. Violations:\n" + report.failureSummary()
                     + "\nRevise your plan so that every check passes, or answer INVESTIGATE if impossible."));
@@ -107,7 +107,6 @@ public class PurchasingAgentService {
         return finish(req, proposal, report, passed, drafts, attempt, trace, error);
     }
 
-    // ---------- step 1: LLM investigates and decides ----------
     private Proposal think(LlmClient llm, List<ObjectNode> messages, List<TraceStep> trace, int attempt) {
         for (int step = 0; step < MAX_TOOL_STEPS; step++) {
             ObjectNode msg = llm.chat(messages, tools.specs());
@@ -149,10 +148,9 @@ public class PurchasingAgentService {
         }
     }
 
-    // ---------- step 2+3: act (draft POs) and validate the resulting state ----------
     private ValidationReport actAndValidate(AgentRequest req, Proposal p, List<PurchaseOrder> drafts, List<TraceStep> trace, int attempt) {
         if (p.decision() == DecisionType.INVESTIGATE) {
-            return new ValidationReport(true, List.of());             // nothing is executed, human takes over
+            return new ValidationReport(true, List.of());
         }
         try {
             if (p.decision() != DecisionType.REJECT) {
@@ -173,7 +171,6 @@ public class PurchasingAgentService {
         }
     }
 
-    // ---------- step 4: execute or hold for approval ----------
     private AgentRunResult finish(AgentRequest req, Proposal p, ValidationReport report, boolean passed,
                                   List<PurchaseOrder> drafts, int attempts, List<TraceStep> trace, String error) {
         DecisionType decision = p == null ? DecisionType.INVESTIGATE : p.decision();
@@ -233,7 +230,6 @@ public class PurchasingAgentService {
         return new AgentRunResult(row.getId(), req.scenarioType(), decision, orders, reasoning, status, attempts, reasons, poIds, report, trace);
     }
 
-    // ---------- helpers ----------
     private ObjectNode message(String role, String content) {
         return mapper.createObjectNode().put("role", role).put("content", content);
     }

@@ -12,7 +12,7 @@ public class PurchaseOrder {
     private int quantity;
     private double unitPrice;
     @Enumerated(EnumType.STRING) private PoStatus status;
-    private String source;   // SYSTEM or AGENT
+    private String source;
     private String note;
     private java.time.LocalDateTime createdAt = java.time.LocalDateTime.now();
 
