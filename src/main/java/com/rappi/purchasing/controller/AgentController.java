@@ -10,6 +10,7 @@ import com.rappi.purchasing.eval.EvaluationService;
 import com.rappi.purchasing.eval.ScenarioCatalog;
 import com.rappi.purchasing.agent.LlmClient;
 import com.rappi.purchasing.repository.AgentDecisionRepository;
+import com.rappi.purchasing.repository.BudgetRepository;
 import com.rappi.purchasing.repository.ProductRepository;
 import com.rappi.purchasing.repository.SupplierRepository;
 import com.rappi.purchasing.service.DemoDataService;
@@ -31,6 +32,7 @@ public class AgentController {
     private final LlmClient llm;
     private final ProductRepository products;
     private final SupplierRepository suppliers;
+    private final BudgetRepository budgets;
 
     /** Names and terms the UI needs to explain the situation in plain language. */
     @GetMapping("/reference")
@@ -45,6 +47,7 @@ public class AgentController {
                         "name", s.getName() == null ? ("Supplier " + s.getId()) : s.getName(),
                         "leadTimeDays", s.getLeadTimeDays(),
                         "moq", s.getMoq()))));
+        out.put("nodes", budgets.findAll().stream().map(b -> b.getNodeId()).sorted().toList());
         return out;
     }
 

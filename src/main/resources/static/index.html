@@ -67,6 +67,14 @@
   .expect{display:flex;gap:10px;margin-top:10px;padding:10px 14px;border:1px dashed var(--border-strong);border-radius:10px;font-size:12.5px;color:var(--muted);background:#fafbfc}
   .expect svg{flex:none;width:15px;height:15px;margin-top:2px;stroke:var(--faint)}
 
+  /* ---------- custom request form ---------- */
+  .form-grid{display:grid;gap:12px}
+  .form-grid-inner{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+  .form-grid label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .form-grid select{min-width:0;width:100%}
+  .form-grid input{font:inherit;color:var(--text);border:1px solid var(--border-strong);border-radius:9px;padding:9px 13px;text-transform:none;letter-spacing:0;font-weight:400}
+  .form-grid input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,70,229,.15)}
+
   /* ---------- pills / badges ---------- */
   .pill{display:inline-flex;align-items:center;gap:7px;padding:4px 11px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
   .pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.85}
@@ -248,6 +256,36 @@
     </div>
   </div>
 
+  <!-- 1b. Custom request -->
+  <div class="card">
+    <details id="customBox">
+      <summary style="cursor:pointer;font-weight:650;font-size:14.5px">Or try your own situation (custom request)</summary>
+      <p class="sub" style="margin-top:12px">Build any request for the agent. It reads whatever is currently in the database, so change the data first if you want a different world (see README), then run it here.</p>
+      <div class="form-grid">
+        <label>Situation
+          <select id="cType">
+            <option value="RECOMMENDATION_REVIEW">Review a purchase recommendation</option>
+            <option value="SUPPLIER_SHORTFALL">Supplier cannot fulfil a PO</option>
+          </select>
+        </label>
+        <div class="review-only form-grid-inner">
+          <label>Product <select id="cProduct"></select></label>
+          <label>Node <select id="cNode"></select></label>
+          <label>Recommended supplier <select id="cSupplier"></select></label>
+          <label>Recommended quantity <input type="number" id="cQty" min="1" value="800"></label>
+        </div>
+        <div class="shortfall-only form-grid-inner" style="display:none">
+          <label>Open purchase order <select id="cPo"></select></label>
+          <label>Quantity supplier can supply <input type="number" id="cConfirmed" min="0" value="250"></label>
+        </div>
+      </div>
+      <div class="controls" style="margin-top:14px">
+        <button id="runCustom" class="btn primary">Run custom request</button>
+        <span class="why">Tip: click <b>Reset demo data</b> first so earlier runs do not change the starting point.</span>
+      </div>
+    </details>
+  </div>
+
   <!-- 2. Result -->
   <div class="card" id="resultCard" style="display:none">
     <div class="card-head"><span class="step-no">2</span><h2>Agent result</h2></div>
@@ -357,8 +395,56 @@ async function init() {
   presets = (await api('/scenarios')).data;
   $('scenario').innerHTML = presets.map(p => `<option value="${p.id}">${esc(p.title)}</option>`).join('');
   $('scenario').onchange = showDesc; showDesc();
+  initCustomForm();
   loadPending(); loadAudit();
 }
+
+/* ---------- custom request ---------- */
+const optionsOf = (obj, fmt) => Object.keys(obj).map(id => `<option value="${id}">${esc(fmt(id, obj[id]))}</option>`).join('');
+
+async function initCustomForm() {
+  $('cProduct').innerHTML = optionsOf(ref.products, (id, p) => `${p.name} (#${id})`);
+  $('cNode').innerHTML = (ref.nodes || []).map(n => `<option>${esc(n)}</option>`).join('');
+  $('cSupplier').innerHTML = optionsOf(ref.suppliers, (id, s) => `${s.name} (lead ${s.leadTimeDays}d, MOQ ${s.moq})`);
+  $('cType').onchange = syncCustomType;
+  await loadOpenPos();
+  syncCustomType();
+}
+
+async function loadOpenPos() {
+  const { data } = await api('/purchase-orders?status=OPEN');
+  $('cPo').innerHTML = data.map(p => `<option value="${p.id}">PO #${p.id}: ${p.quantity} x ${esc(prod(p.productId))} from ${esc(sup(p.supplierId))} (${esc(p.nodeId)})</option>`).join('')
+    || '<option value="">No open purchase orders</option>';
+}
+
+function syncCustomType() {
+  const shortfall = $('cType').value === 'SUPPLIER_SHORTFALL';
+  document.querySelector('.review-only').style.display = shortfall ? 'none' : '';
+  document.querySelector('.shortfall-only').style.display = shortfall ? '' : 'none';
+}
+
+$('runCustom').onclick = async () => {
+  const shortfall = $('cType').value === 'SUPPLIER_SHORTFALL';
+  const request = shortfall
+    ? { scenarioType: 'SUPPLIER_SHORTFALL', poId: Number($('cPo').value), confirmedQty: Number($('cConfirmed').value) }
+    : { scenarioType: 'RECOMMENDATION_REVIEW', productId: Number($('cProduct').value), nodeId: $('cNode').value,
+        supplierId: Number($('cSupplier').value), recommendedQty: Number($('cQty').value) };
+  if (shortfall && !request.poId) return toast('No open PO', 'Reset demo data to restore the open purchase orders.');
+  $('runCustom').disabled = true;
+  $('resultCard').style.display = 'block';
+  $('result').innerHTML = '<div class="loading"><span class="spinner"></span>Agent is working on your custom request&hellip;</div>';
+  try {
+    const { status, data } = await api('/agent/run', 'POST', request);
+    if (status >= 400) throw new Error((data && (data.message || data.error)) || ('HTTP ' + status));
+    renderResult(data, { request });
+    loadPending(); loadAudit(); loadOpenPos();
+  } catch (e) {
+    $('result').innerHTML = `<div class="empty">${ICO.err}<span>The agent run failed: ${esc(e.message)}</span></div>`;
+  }
+  $('runCustom').disabled = false;
+  $('resultCard').scrollIntoView({ behavior: 'smooth' });
+};
+
 function showDesc() {
   const p = presets.find(x => x.id === $('scenario').value);
   $('desc').textContent = p.description;
@@ -397,7 +483,7 @@ $('reset').onclick = async () => {
   $('reset').disabled = true;
   await api('/admin/reset', 'POST');
   $('resultCard').style.display = 'none'; $('evalCard').style.display = 'none';
-  loadPending(); loadAudit();
+  loadPending(); loadAudit(); loadOpenPos();
   $('reset').disabled = false;
   toast('Demo data reset', 'Seed state restored. The next run starts from a clean world.', 'ok');
 };
@@ -409,7 +495,7 @@ $('eval').onclick = async () => {
   try {
     const { data } = await api('/eval/run', 'POST');
     renderEval(data);
-    loadPending(); loadAudit();
+    loadPending(); loadAudit(); loadOpenPos();
   } catch (e) {
     $('evalResult').innerHTML = `<div class="empty">${ICO.err}<span>Evaluation failed: ${esc(e.message)}</span></div>`;
   }
