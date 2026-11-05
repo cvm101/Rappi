@@ -217,7 +217,7 @@ Tests: `mvn test` (uses the mock LLM, needs no key).
 
 1. Pick a situation, click **Run agent**. You see the decision, reasoning, final validation table and the full tool trace.
 2. Situations that need a human appear under **Waiting for human approval**: Approve (re-validates) or Reject.
-3. **Custom request**: the collapsible "Or try your own situation" card lets you pick any product, node, supplier and quantity (or an open PO and the quantity the supplier can ship) and run the agent on it. To change the starting world (stock, demand, supplier stock, budget), edit `data.sql` or the Supabase rows first.
+3. **Custom request**: the always-visible "Run a scenario manually (custom request)" card lets you pick any product, node, supplier and quantity (or an open PO and the quantity the supplier can ship) and run the agent on it. To change the starting world (stock, demand, supplier stock, budget), edit `data.sql` or the Supabase rows first.
 4. **Reset demo data** restores the seed state. **Run evaluation** runs all scenarios and scores them.
 
 REST API: `GET /api/scenarios`, `POST /api/agent/run`, `GET /api/agent/decisions`, `GET /api/purchase-orders?status=`, `POST /api/purchase-orders/{id}/approve|reject`, `POST /api/admin/reset`, `POST /api/eval/run`.
