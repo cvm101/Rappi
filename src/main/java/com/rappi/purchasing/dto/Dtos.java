@@ -25,7 +25,12 @@ public final class Dtos {
 
     public record Check(String name, boolean passed, String detail) {}
 
-    public record ValidationReport(boolean passed, List<Check> checks) {
+    /** checks are blocking; warnings are advisory (they never fail the report). */
+    public record ValidationReport(boolean passed, List<Check> checks, List<String> warnings) {
+        public ValidationReport(boolean passed, List<Check> checks) {
+            this(passed, checks, List.of());
+        }
+
         public String failureSummary() {
             return checks.stream().filter(c -> !c.passed())
                     .map(c -> c.name() + ": " + c.detail()).reduce((a, b) -> a + "\n" + b).orElse("");

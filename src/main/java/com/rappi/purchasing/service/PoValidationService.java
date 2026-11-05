@@ -52,18 +52,27 @@ public class PoValidationService {
         double free = storageService.freeVolume(nodeId);
         checks.add(new Check("STORAGE", volume <= free, "needs volume " + volume + " vs free volume " + free));
 
-        // 4. stockout: stock + incoming + new must cover demand during the lead time
+        // Hard STOCKOUT guard: when the new order lands (after leadTime), the projected balance must not be
+        // negative. Arrival dates of existing POs are unknown, so they are assumed to land within the lead time.
         double leadDemand = daily * leadTime;
         int cover = onHand + incoming + newQty;
         checks.add(new Check("STOCKOUT", cover >= leadDemand,
                 "on hand+incoming+new=" + cover + " vs demand during lead time=" + leadDemand));
 
-        // 5. overstock: do not hold more than max-cover-days of demand
+        // buying nothing can never make existing overstock worse, so it always passes
         double maxStock = daily * policy.getMaxCoverDays();
-        // (buying nothing can never make existing overstock worse, so it always passes)
         checks.add(new Check("OVERSTOCK", newQty == 0 || cover <= maxStock,
                 "projected stock " + cover + " vs max " + maxStock + " (" + policy.getMaxCoverDays() + " days of demand)"));
 
-        return new ValidationReport(checks.stream().allMatch(Check::passed), checks);
+        // Advisory POLICY_COVER: same horizon as calculate_requirement (lead + review + safety days).
+        // Deliberately not blocking: a budget/storage-limited partial buy is allowed, but it is flagged for a human.
+        double policyCover = daily * (leadTime + policy.getReviewDays() + policy.getSafetyDays());
+        List<String> warnings = new ArrayList<>();
+        if (cover < policyCover) {
+            warnings.add("POLICY_COVER: projected stock " + cover + " is below the policy target " + policyCover
+                    + " (" + (leadTime + policy.getReviewDays() + policy.getSafetyDays()) + " days of demand)");
+        }
+
+        return new ValidationReport(checks.stream().allMatch(Check::passed), checks, warnings);
     }
 }

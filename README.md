@@ -69,6 +69,15 @@ flowchart TD
 | `STORAGE` | Volume must fit free space (capacity - stored - incoming of all products) |
 | `STOCKOUT` | on hand + incoming + new must cover demand during the lead time (this also validates **REJECT** decisions) |
 | `OVERSTOCK` | projected stock must not exceed 21 days of demand |
+| `POLICY_COVER` (advisory warning, never blocks) | projected stock below `demand x (lead + 7 review + 2 safety days)`, the same horizon `calculate_requirement` plans for |
+
+#### Two coverage horizons (why `STOCKOUT` is lead-time only)
+
+- **Planning horizon** (`calculate_requirement`): `target = daily x (lead + 7 + 2)`, `net need = target - on hand - incoming`. It tells the agent how much to order.
+- **Hard guard** (`STOCKOUT`): `on hand + incoming + new >= daily x lead`. It means the projected balance is not negative when the new order lands. It stays lead-time only on purpose: budget- or storage-limited partial buys must still be allowed (the agent buys what it can and escalates), and a 12-day hard bar would reject exactly those plans.
+- **Advisory** (`POLICY_COVER`): reports when the plan ends below the planning horizon. Partial coverage is already routed to human approval, and the warning is stored in the validation report and the audit trace.
+
+Example (milk, 40 on hand, 300 incoming, 70/day, supplier lead time 5 days, new order 460): cover = 800. `STOCKOUT` passes (800 >= 350), `POLICY_COVER` warns (800 < 980). See `PoValidationServiceTest`.
 
 ## Data model (Supabase / Postgres)
 
@@ -274,4 +283,4 @@ src/test            EvaluationTest
 
 ## Known simplifications
 
-Single product per request; one lead time per supplier; incoming stock is assumed to arrive within the planning horizon; budget is a single per-node balance; money uses `double`. These keep the code easy to explain and are the first things to harden for production.
+Single product per request; one lead time per supplier; purchase orders have no arrival dates, so existing incoming stock is assumed to land within the lead time and all stock buckets are summed at once (no day-by-day simulation; adding an expected arrival date to `purchase_order` is the next step); budget is a single per-node balance; money uses `double`. These keep the code easy to explain and are the first things to harden for production.
