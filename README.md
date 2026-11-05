@@ -74,6 +74,110 @@ flowchart TD
 
 `product`, `inventory`, `demand_forecast`, `supplier`, `supplier_product` (price, available qty), `purchase_order` (OPEN / DRAFT / PENDING_APPROVAL / APPROVED / REJECTED / CANCELLED), `budget` (per node), `storage_capacity` (per node), `agent_decision` (audit). DDL: `src/main/resources/schema.sql`, seed: `data.sql`. Three nodes: `BLR-01` (healthy), `BLR-02` (tight budget), `BLR-03` (tight storage).
 
+### Database diagram
+
+Relationships are logical (joined by `product_id`, `supplier_id`, `node_id`); the schema has no foreign key constraints so the demo data can be reset easily. `node_id` (for example `BLR-01`) links the per-node tables.
+
+```mermaid
+erDiagram
+  PRODUCT {
+    bigint id PK
+    varchar name
+    double unit_volume
+    double unit_cost
+  }
+  SUPPLIER {
+    bigint id PK
+    varchar name
+    int lead_time_days
+    int moq
+    double reliability_score
+  }
+  SUPPLIER_PRODUCT {
+    bigint id PK
+    bigint supplier_id
+    bigint product_id
+    double unit_price
+    int available_qty
+  }
+  INVENTORY {
+    bigint id PK
+    bigint product_id
+    varchar node_id
+    int on_hand
+  }
+  DEMAND_FORECAST {
+    bigint id PK
+    bigint product_id
+    varchar node_id
+    double daily_demand
+  }
+  BUDGET {
+    bigint id PK
+    varchar node_id
+    double remaining_amount
+  }
+  STORAGE_CAPACITY {
+    bigint id PK
+    varchar node_id
+    double capacity_volume
+    double used_volume
+  }
+  PURCHASE_ORDER {
+    bigint id PK
+    bigint product_id
+    bigint supplier_id
+    varchar node_id
+    int quantity
+    double unit_price
+    varchar status
+    varchar source
+    timestamp created_at
+  }
+  AGENT_DECISION {
+    bigint id PK
+    varchar scenario
+    bigint product_id
+    varchar node_id
+    varchar decision
+    varchar final_status
+    int attempts
+    varchar po_ids
+    text trace_json
+    text validation_json
+  }
+
+  PRODUCT ||--o{ SUPPLIER_PRODUCT : "sold as"
+  SUPPLIER ||--o{ SUPPLIER_PRODUCT : "offers"
+  PRODUCT ||--o{ INVENTORY : "stocked at node"
+  PRODUCT ||--o{ DEMAND_FORECAST : "forecast per node"
+  PRODUCT ||--o{ PURCHASE_ORDER : "ordered"
+  SUPPLIER ||--o{ PURCHASE_ORDER : "fulfils"
+  PRODUCT ||--o{ AGENT_DECISION : "reviewed"
+```
+
+Which table answers which agent question:
+
+| Question | Tables |
+|---|---|
+| How much stock do we have and need? | `inventory`, `demand_forecast`, committed `purchase_order` rows (OPEN, APPROVED) |
+| Who can supply, how fast, how much? | `supplier`, `supplier_product` |
+| Can we afford and store it? | `budget`, `storage_capacity` (plus incoming volume from `purchase_order`) |
+| What did the agent do and why? | `agent_decision` (trace and validation report), `purchase_order` (DRAFT, PENDING_APPROVAL, APPROVED, CANCELLED) |
+
+Purchase order lifecycle:
+
+```mermaid
+stateDiagram-v2
+  [*] --> OPEN: existing PO from the purchasing system
+  [*] --> DRAFT: agent proposes
+  DRAFT --> CANCELLED: validation failed, agent retries
+  DRAFT --> APPROVED: valid and within policy, auto-executed
+  DRAFT --> PENDING_APPROVAL: valid but needs a human
+  PENDING_APPROVAL --> APPROVED: buyer approves, re-validated
+  PENDING_APPROVAL --> REJECTED: buyer rejects
+```
+
 ## Setup and run
 
 Requirements: JDK 17+ and Maven.
